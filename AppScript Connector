@@ -28,15 +28,15 @@ function getFields(request) {
   var agregations = cc.AggregationType;
   
   fields.newDimension()
-    .setID('day')
+    .setId('day')
     .setType(types.YEAR_MONTH_DAY);
   
   fields.newDimension()
-    .setID('time')
+    .setId('time')
     .setType(types.HOUR);
   
   fields.newDimension()
-    .setID('abbreviation_canton_and_fl')
+    .setId('abbreviation_canton_and_fl')
     .setType(types.TEXT);
   
   fields.newMetric()
@@ -84,10 +84,10 @@ function getFields(request) {
 
 function getSchema(request) {
   var fields = getFields(request).build();
-  return { schema: fuelds };
+  return { schema: fields };
 }
 
-function responseToRows(requestedFields, response, pacakageName) {
+function responseToRows(requestedFields, response, record) {
   //Transform parsed data and filter for requested fields
   return response.map(function(dailyCases) {
     var row = [];
@@ -121,6 +121,10 @@ function responseToRows(requestedFields, response, pacakageName) {
           return row.push(dailyCases.ncumul_confirmed_non_resident);
         case 'ninst_hosp_non_resident':
           return row.push(dailyCases.ninst_hosp_non_resident);
+        case 'record':
+          return row.push(record);
+        default:
+          return row.push('');
       }
     });
     return { values: row };
@@ -129,10 +133,10 @@ function responseToRows(requestedFields, response, pacakageName) {
 
 function getData(request) {
   // Create schema for requested fields
-  var requestedFieldIds = request.fields.map(function(filed) {
+  var requestedFieldIds = request.fields.map(function(field) {
     return field.name;
   });
-  var requestedFields = getFields().forIds(requestedFieldsIds);
+  var requestedFields = getFields().forIds(requestedFieldIds);
   // Fetch and parse data from API
   var url = [
     'https://data.bs.ch/api/records/1.0/search/?dataset=',
