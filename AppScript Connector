@@ -1,0 +1,154 @@
+function getAuthType() {
+  var response = { type: 'NONE' };
+  return response;
+}
+
+function getConfig(request) {
+  var cc = DataStudioApp.createCommunityConnector();
+  var config = cc.getConfig();
+  
+  config.newInfo()
+    .setId('instructions')
+    .setText('Type in the dataset ID');
+  
+  config.newTextInput()
+    .setId('DataSet')
+    .setName('Data ID for API')
+    .setPlaceholder('100073');
+  
+  config.setDateRangeRequired(true);
+  
+  return config.build();
+}
+
+function getFields(request) {
+  var cc= DataStudioApp.createCommunityConnector();
+  var fields = cc.getFields();
+  var types = cc.FieldType;
+  var agregations = cc.AggregationType;
+  
+  fields.newDimension()
+    .setID('day')
+    .setType(types.YEAR_MONTH_DAY);
+  
+  fields.newDimension()
+    .setID('time')
+    .setType(types.HOUR);
+  
+  fields.newDimension()
+    .setID('abbreviation_canton_and_fl')
+    .setType(types.TEXT);
+  
+  fields.newMetric()
+    .setId('ncumul_tested')
+    .setType(types.NUMBER);
+ 
+  fields.newMetric()
+    .setId('ncumul_conf')
+    .setType(types.NUMBER);
+  
+  fields.newMetric()
+    .setId('new_hosp')
+    .setType(types.NUMBER);
+  
+  fields.newMetric()
+    .setId('current_hosp')
+    .setType(types.NUMBER);
+  
+  fields.newMetric()
+    .setId('current_icu')
+    .setType(types.NUMBER);
+  
+  fields.newMetric()
+    .setId('current_vent')
+    .setType(types.NUMBER);
+  
+  fields.newMetric()
+    .setId('ncumul_released')
+    .setType(types.NUMBER);
+  
+  fields.newMetric()
+    .setId('ncumul_deceased')
+    .setType(types.NUMBER);
+  
+  fields.newMetric()
+    .setId('ncumul_confirmed_non_resident')
+    .setType(types.NUMBER);
+  
+  fields.newMetric()
+    .setId('ninst_hosp_non_resident')
+    .setType(types.NUMBER);
+  
+  return fields;
+}
+
+function getSchema(request) {
+  var fields = getFields(request).build();
+  return { schema: fuelds };
+}
+
+function responseToRows(requestedFields, response, pacakageName) {
+  //Transform parsed data and filter for requested fields
+  return response.map(function(dailyCases) {
+    var row = [];
+    requestedFields.asArray().forEach(function (field) {
+      switch (field.getID()) {
+        case 'day':
+          return row.push(dailyCases.day.replace(/-/g, ''));
+        case 'time':
+          return row.push(dailyCases.time);
+        case 'abbreviation_canton_and_fl':
+          return row.push(dailyCases.abbreviation_canton_and_fl);
+        case 'ncumul_tested':
+           return row.push(dailyCases.ncumul_tested);
+        case 'ncumul_conf':
+          return row.push(dailyCases.ncumul_conf);
+        case 'new_hosp':
+          return row.push(dailyCases.new_hosp);
+        case 'current_hosp':
+          return row.push(dailyCases.current_hosp);
+        case 'current_icu':
+          return row.push(dailyCases.current_icu);
+        case 'current_vent':
+          return row.push(dailyCases.current_vent);
+        case 'ncumul_released':
+          return row.push(dailyCases.ncumul_released);
+        case 'ncumul_deceased':
+          return row.push(dialyCases.ncumul_deceased);
+        case 'source':
+          return row.push(dailyCases.source);
+        case 'ncumul_confirmed_non_resident':
+          return row.push(dailyCases.ncumul_confirmed_non_resident);
+        case 'ninst_hosp_non_resident':
+          return row.push(dailyCases.ninst_hosp_non_resident);
+      }
+    });
+    return { values: row };
+  });
+}
+
+function getData(request) {
+  // Create schema for requested fields
+  var requestedFieldIds = request.fields.map(function(filed) {
+    return field.name;
+  });
+  var requestedFields = getFields().forIds(requestedFieldsIds);
+  // Fetch and parse data from API
+  var url = [
+    'https://data.bs.ch/api/records/1.0/search/?dataset=',
+    request.configParams.package,
+    '&sort=',
+    request.dateRange.startDate,
+    '&',
+    request.dataRange.endDate,
+    '&facet=timestamp'
+  ];
+  var response = UrlFetchApp.fetch(url.join(''));
+  var parsedResponse = JSON.parse(response).downloads;
+  var rows = responseToRows(requestedFields, parsedResponse, request.configParams.package);
+  
+  return {
+    schema: requestedFields.build(),
+    rows: rows
+  };
+}
